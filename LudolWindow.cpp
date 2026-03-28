@@ -30,9 +30,8 @@ const std::vector<TDT4102::Color> COLORS = {
     TDT4102::Color::pink,
     TDT4102::Color::blue,
     TDT4102::Color::red,
-    TDT4102::Color::green,
+    TDT4102::Color::hot_pink,
 };
-
 
 const std::vector<std::vector<std::pair<float,float>>> HOME_START = {
     {{1.5,1.5},{3.5,1.5},{1.5,3.5},{3.5,3.5}},
@@ -41,31 +40,26 @@ const std::vector<std::vector<std::pair<float,float>>> HOME_START = {
     {{1.5,10.5},{3.5,10.5},{1.5,12.5},{3.5,12.5}}
 };
 
-// Piler (en per farge, 5 ruter + mål)
-const std::vector<std::pair<int, int>> HOME_YELLOW = {{7, 1}, {7, 2}, {7, 3}, {7, 4}, {7, 5}};
-const std::vector<std::pair<int, int>> HOME_BLUE = {{1, 7}, {2, 7}, {3, 7}, {4, 7}, {5, 7}};
-const std::vector<std::pair<int, int>> HOME_RED = {{7, 9}, {7, 10}, {7, 11}, {7, 12}, {7, 13}};
-const std::vector<std::pair<int, int>> HOME_GREEN = {{9, 7}, {10, 7}, {11, 7}, {12, 7}, {13, 7}};
+const std::vector<std::vector<std::pair<int, int>>> HOME_END {
+    {{1, 7}, {2, 7}, {3, 7}, {4, 7}, {5, 7}},
+    {{7, 1}, {7, 2}, {7, 3}, {7, 4}, {7, 5}},
+    {{13, 7}, {12, 7}, {11, 7}, {10, 7}, {9, 7}},
+    {{7, 13}, {7, 12}, {7, 11}, {7, 10}, {7, 9} }
+};
 
 LudolWindow::LudolWindow(int x, int y, int width, int height, const std::string &title)
     : AnimationWindow(x, y, width, height, title),
       reset_button({10, 10}, 100, 30, "Reset"),
-      quit_button({120, 10}, 100, 30, "Quit")
+      quit_button({120, 10}, 100, 30, "Quit"),
+      dice_button({230, 10}, 100, 30, "Kast terning")
 {
     add(reset_button);
     add(quit_button);
-    reset_button.setCallback(std::bind(&LudolWindow::cb_reset, this));
-    quit_button.setCallback(std::bind(&LudolWindow::cb_quit, this));
-}
+    add(dice_button);
 
-void LudolWindow::cb_reset()
-{
-    reset_game();
-}
-
-void LudolWindow::cb_quit()
-{
-    close();
+    reset_button.setCallback(std::bind(&LudolWindow::reset_game, this));
+    quit_button.setCallback(std::bind(&LudolWindow::close, this));
+    dice_button.setCallback(std::bind(&LudolWindow::roll_dice, this));  
 }
 
 void LudolWindow::play()
@@ -75,8 +69,11 @@ void LudolWindow::play()
     Player roed("Rød", COLORS.at(2), 2);
     Player gronn("Grønn", COLORS.at(3), 3);
 
+    if(!players.empty()) {
+        throw std::runtime_error("Spillet er allerede i gang!");
+    }
     // vektor med alle spillerne
-    std::vector<Player> players = {gul, blaa, gronn, roed};
+    players = {gul, blaa, gronn, roed};
 
     // logger informasjonen om spillerne og brikkene deres til terminalen
     for (const auto &player : players)
@@ -90,7 +87,7 @@ void LudolWindow::play()
         {
             std::cout << "  Brikke " << i
                       << ": path_index=" << player.pieces[i].path_index
-                      << ", home=" << player.pieces[i].home
+                      << ", home=" << player.pieces[i].home_start
                       << ", oneround=" << player.pieces[i].oneround << "\n";
         }
     }
@@ -172,13 +169,23 @@ void LudolWindow::draw_board()
 
 void LudolWindow::draw_piece(Piece piece, Player player)
 {   
-    if (piece.home) {
+    if (piece.home_start) {
         const std::pair<float, float> piecePos = HOME_START.at(player.playernumber).at(piece.piece_number);
    
         const float x = piecePos.first;
         const float y = piecePos.second;
         draw_circle({BOARD_X + static_cast<int>(std::round((x * CELL)+CELL/2.0)), BOARD_Y+ static_cast<int>(std::round((y * CELL)+CELL/2.0))}, CELL*0.95 / 2.0, TDT4102::Color::black);
         draw_circle({BOARD_X + static_cast<int>(std::round((x * CELL)+CELL/2.0)), BOARD_Y+ static_cast<int>(std::round((y * CELL)+CELL/2.0))}, CELL*0.85 / 2.0, player.color);
+    }
+    else if(piece.home_end){
+
+        const std::pair<int, int> piecePos = HOME_END.at(player.playernumber).at(piece.steps_made - BOARD_PATH.size());
+
+        draw_circle({(BOARD_X + piecePos.first * CELL)+CELL/2, (BOARD_Y + piecePos.second * CELL)+CELL/2}, CELL*0.95 / 2, TDT4102::Color::black);
+        draw_circle({(BOARD_X + piecePos.first * CELL)+CELL/2, (BOARD_Y + piecePos.second * CELL)+CELL/2}, CELL*0.85 / 2, player.color);
+
+
+
     } else {
         const std::pair<int, int> piecePos = BOARD_PATH.at(piece.path_index);
 
@@ -197,8 +204,69 @@ void LudolWindow::draw_players(std::vector<Player> players)
         }
     }
 }
+
+
+void LudolWindow::roll_dice() {
+      
+    //index til player:
+    //const int playerIndex = 0;
+
+    const int brikkeIndex = 0;
+
+
+
+    // generere et tilfeldig tall mellom 1 og 6
+    const int dice_result = 1; //rand() % 6 + 1;
+    std::cout << "Du kastet en " << dice_result << "!" << std::endl;
+    
+    //pathindex før flytt
+   
+
+   for (int playerIndex = 0; playerIndex <= 3; ++playerIndex)
+   {
+     const int playerpos_before = players.at(playerIndex).pieces.at(brikkeIndex).path_index;
+
+    //pathindex etter flytt. % (mod operator) fjerner alle hele runder rundt brette. 
+    //om brikken har kommet til startposisjonen blir posisjonen satt til null igjne
+    const int playerpos_after = (playerpos_before + dice_result) % BOARD_PATH.size();
+
+
+   players.at(playerIndex).pieces.at(brikkeIndex).home_start = false;
+
+    players.at(playerIndex).pieces.at(brikkeIndex).path_index = playerpos_after;
+
+    players.at(playerIndex).pieces.at(brikkeIndex).steps_made += dice_result;
+
+    //Har vi gått rundt hele brettet?
+    if (players.at(playerIndex).pieces.at(brikkeIndex).steps_made >= BOARD_PATH.size()) {
+        players.at(playerIndex).pieces.at(brikkeIndex).home_end = true;
+    }
+
+   }
+
+    
+    
+}
+
 void LudolWindow::draw_poeng() {}
 void LudolWindow::handle_click(int x, int y) {}
 bool LudolWindow::check_winner() { return false; }
-void LudolWindow::reset_game() {}
+void LudolWindow::reset_game()
+{
+
+   /* try
+    {
+        std::cout << "Før vi kaller play\n";
+         play(); //throws
+         std::cout << "Etter at vi kalte play\n";
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+    
+   std::cout << "alt er bra reset game";*/
+
+
+}
 void LudolWindow::write_result_to_file(const std::string &result) {}

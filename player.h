@@ -7,7 +7,9 @@
 struct Piece {
     int piece_number;
     int path_index; // index i BOARD_PATH for å finne brikkens posisjon
-    bool home;      // er brikken på startfeltet?
+    int steps_made; // antall flytt fra sitt startpunkt i BOARD_PATH
+    bool home_start;      // er brikken på startfeltet?
+    bool home_end;        // er brikken på den pilen banen inn til mål?
     bool oneround;  // har brikken fullført en runde rundt brettet?
     
     Piece(int piece_number, int start_index);

@@ -65,13 +65,11 @@ private:
      */
     void write_result_to_file(const std::string& result);
 
-    
-   
-    void cb_reset();
-    void cb_quit();
+    void roll_dice();
 
-
+    std::vector<Player> players;
     //knapper
     Button reset_button;  
     Button quit_button;
+    Button dice_button;
 };
