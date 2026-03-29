@@ -41,10 +41,10 @@ const std::vector<std::vector<std::pair<float,float>>> HOME_START = {
 };
 
 const std::vector<std::vector<std::pair<int, int>>> HOME_END {
-    {{1, 7}, {2, 7}, {3, 7}, {4, 7}, {5, 7}},
-    {{7, 1}, {7, 2}, {7, 3}, {7, 4}, {7, 5}},
-    {{13, 7}, {12, 7}, {11, 7}, {10, 7}, {9, 7}},
-    {{7, 13}, {7, 12}, {7, 11}, {7, 10}, {7, 9} }
+    {{1, 7}, {2, 7}, {3, 7}, {4, 7}, {5, 7}, {6, 7}},
+    {{7, 1}, {7, 2}, {7, 3}, {7, 4}, {7, 5}, {7, 6}},
+    {{13, 7}, {12, 7}, {11, 7}, {10, 7}, {9, 7}, {8, 7}},
+    {{7, 13}, {7, 12}, {7, 11}, {7, 10}, {7, 9}, {7, 8} }
 };
 
 LudolWindow::LudolWindow(int x, int y, int width, int height, const std::string &title)
@@ -178,8 +178,9 @@ void LudolWindow::draw_piece(Piece piece, Player player)
         draw_circle({BOARD_X + static_cast<int>(std::round((x * CELL)+CELL/2.0)), BOARD_Y+ static_cast<int>(std::round((y * CELL)+CELL/2.0))}, CELL*0.85 / 2.0, player.color);
     }
     else if(piece.home_end){
+        const int home_end_path_index = std::min(piece.steps_made - BOARD_PATH.size(), HOME_END.at(player.playernumber).size() - 1);
 
-        const std::pair<int, int> piecePos = HOME_END.at(player.playernumber).at(piece.steps_made - BOARD_PATH.size());
+        const std::pair<int, int> piecePos = HOME_END.at(player.playernumber).at(home_end_path_index);
 
         draw_circle({(BOARD_X + piecePos.first * CELL)+CELL/2, (BOARD_Y + piecePos.second * CELL)+CELL/2}, CELL*0.95 / 2, TDT4102::Color::black);
         draw_circle({(BOARD_X + piecePos.first * CELL)+CELL/2, (BOARD_Y + piecePos.second * CELL)+CELL/2}, CELL*0.85 / 2, player.color);
@@ -206,46 +207,35 @@ void LudolWindow::draw_players(std::vector<Player> players)
 }
 
 
-void LudolWindow::roll_dice() {
-      
-    //index til player:
-    //const int playerIndex = 0;
-
-    const int brikkeIndex = 0;
-
-
-
+void LudolWindow::roll_dice() {      
     // generere et tilfeldig tall mellom 1 og 6
-    const int dice_result = 1; //rand() % 6 + 1;
+    dice_result = 10; //rand() % 6 + 1;
     std::cout << "Du kastet en " << dice_result << "!" << std::endl;
-    
-    //pathindex før flytt
-   
 
-   for (int playerIndex = 0; playerIndex <= 3; ++playerIndex)
-   {
-     const int playerpos_before = players.at(playerIndex).pieces.at(brikkeIndex).path_index;
+    flytt_brike(0, dice_result);
+}
+
+void LudolWindow::flytt_brike(const int valgtBrikkeIndex, const int steps_to_make){
+
+   // for (int current_player_index = 0; current_player_index <= 3; ++current_player_index)
+   // {
+    const int playerpos_before = players.at(current_player_index).pieces.at(valgtBrikkeIndex).path_index;
 
     //pathindex etter flytt. % (mod operator) fjerner alle hele runder rundt brette. 
     //om brikken har kommet til startposisjonen blir posisjonen satt til null igjne
-    const int playerpos_after = (playerpos_before + dice_result) % BOARD_PATH.size();
+    const int playerpos_after = (playerpos_before + steps_to_make) % BOARD_PATH.size();
 
-
-   players.at(playerIndex).pieces.at(brikkeIndex).home_start = false;
-
-    players.at(playerIndex).pieces.at(brikkeIndex).path_index = playerpos_after;
-
-    players.at(playerIndex).pieces.at(brikkeIndex).steps_made += dice_result;
+    players.at(current_player_index).pieces.at(valgtBrikkeIndex).home_start = false;
+    players.at(current_player_index).pieces.at(valgtBrikkeIndex).path_index = playerpos_after;
+    players.at(current_player_index).pieces.at(valgtBrikkeIndex).steps_made += steps_to_make;
 
     //Har vi gått rundt hele brettet?
-    if (players.at(playerIndex).pieces.at(brikkeIndex).steps_made >= BOARD_PATH.size()) {
-        players.at(playerIndex).pieces.at(brikkeIndex).home_end = true;
+    if (players.at(current_player_index).pieces.at(valgtBrikkeIndex).steps_made >= BOARD_PATH.size()) {
+        players.at(current_player_index).pieces.at(valgtBrikkeIndex).home_end = true;
+
     }
 
-   }
-
-    
-    
+   // }
 }
 
 void LudolWindow::draw_poeng() {}

@@ -67,7 +67,13 @@ private:
 
     void roll_dice();
 
+    void flytt_brike(int valgtBrikkeIndex, int steps_made);
+
     std::vector<Player> players;
+
+    int current_player_index = 0; // Index til hvilken spiller som har tur (0-3)
+    int dice_result = 0;
+
     //knapper
     Button reset_button;  
     Button quit_button;
