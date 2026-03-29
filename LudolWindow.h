@@ -35,6 +35,8 @@ private:
 
     void draw_piece(Piece piece, Player player);
 
+    void draw_infoText(std::string info); //tegner tekst over spillbrett med instruksjoner 
+
 
     //tegner antall spy og drikke osv
     void draw_poeng();
@@ -73,6 +75,7 @@ private:
 
     int current_player_index = 0; // Index til hvilken spiller som har tur (0-3)
     int dice_result = 0;
+    std::string info;//tekst som skal vises over brettet
 
     //knapper
     Button reset_button;  

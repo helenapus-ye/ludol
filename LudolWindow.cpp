@@ -9,6 +9,8 @@ constexpr int BOARD_Y = 60;
 constexpr int BOARD_SIZE = 600;
 constexpr int CELL = BOARD_SIZE / 15;
 
+
+
 // Alle 52 baneceller i spillrekkefølge {rad, kol}
 // Gul starter på index 0, ruter rundt brettet med klokken
 const std::vector<std::pair<int,int>> BOARD_PATH = {
@@ -27,10 +29,10 @@ const std::vector<std::pair<int,int>> BOARD_PATH = {
 };
 
 const std::vector<TDT4102::Color> COLORS = {
-    TDT4102::Color::pink,
+    TDT4102::Color::yellow,
     TDT4102::Color::blue,
     TDT4102::Color::red,
-    TDT4102::Color::hot_pink,
+    TDT4102::Color::green,
 };
 
 const std::vector<std::vector<std::pair<float,float>>> HOME_START = {
@@ -64,16 +66,8 @@ LudolWindow::LudolWindow(int x, int y, int width, int height, const std::string 
 
 void LudolWindow::play()
 {
-    Player gul("Gul", COLORS.at(0), 0);
-    Player blaa("Blå", COLORS.at(1), 1);
-    Player roed("Rød", COLORS.at(2), 2);
-    Player gronn("Grønn", COLORS.at(3), 3);
-
-    if(!players.empty()) {
-        throw std::runtime_error("Spillet er allerede i gang!");
-    }
-    // vektor med alle spillerne
-    players = {gul, blaa, gronn, roed};
+    //Lager nye spillere og setter start posisijoner
+   reset_game();
 
     // logger informasjonen om spillerne og brikkene deres til terminalen
     for (const auto &player : players)
@@ -91,12 +85,17 @@ void LudolWindow::play()
                       << ", oneround=" << player.pieces[i].oneround << "\n";
         }
     }
+    
+    info = "Det er nå " + players.at(current_player_index).name +  " sin tur. Trykk for å kaste terningen" ;
+    draw_infoText(info);
+
 
     while (!should_close())
     {
         draw_board();
-
+        draw_infoText(info);
         draw_players(players);
+        
 
         // tilslutt
         next_frame();
@@ -206,15 +205,35 @@ void LudolWindow::draw_players(std::vector<Player> players)
     }
 }
 
+void LudolWindow::draw_infoText(std::string info) {
+    
+    draw_text({BOARD_X, BOARD_Y - 25}, info, TDT4102::Color::black, 18);
+    
+}
+
 
 void LudolWindow::roll_dice() {      
     // generere et tilfeldig tall mellom 1 og 6
-    dice_result = 10; //rand() % 6 + 1;
+    dice_result = rand() % 6 + 1;
     std::cout << "Du kastet en " << dice_result << "!" << std::endl;
 
+    ///bytter tekst
+    info = "Du kastet: " + std::to_string(dice_result) + " Trykk på en brikke og et felt, for å flytte";
+    
+
+    //Midlertidig:
+
     flytt_brike(0, dice_result);
+
+    current_player_index = (current_player_index + 1) % 4;
+
+  
+    
 }
 
+/// @brief flytter antall steps og oppdaterer home_start og home_end
+/// @param valgtBrikkeIndex 
+/// @param steps_to_make 
 void LudolWindow::flytt_brike(const int valgtBrikkeIndex, const int steps_to_make){
 
    // for (int current_player_index = 0; current_player_index <= 3; ++current_player_index)
@@ -235,16 +254,34 @@ void LudolWindow::flytt_brike(const int valgtBrikkeIndex, const int steps_to_mak
 
     }
 
-   // }
+    //etter vi har lagt inn at spiller velger felt kan vi bytte tekst her
+    //info = "Det er nå " + players.at(current_player_index).name +  " sin tur. Kast terningen!";
+    
+   
 }
 
 void LudolWindow::draw_poeng() {}
 void LudolWindow::handle_click(int x, int y) {}
 bool LudolWindow::check_winner() { return false; }
-void LudolWindow::reset_game()
-{
 
-   /* try
+void LudolWindow::reset_game()
+
+{
+    Player gul("Gul", COLORS.at(0), 0);
+    Player blaa("Blå", COLORS.at(1), 1);
+    Player roed("Rød", COLORS.at(2), 2);
+    Player gronn("Grønn", COLORS.at(3), 3);
+
+    // vektor med alle spillerne
+    players = {gul, blaa, roed, gronn};
+    current_player_index = 0; // Index til hvilken spiller som har tur (0-3)
+    dice_result = 0;
+
+   /*     if(!players.empty()) {
+        throw std::runtime_error("Spillet er allerede i gang!");
+    }
+        
+    try
     {
         std::cout << "Før vi kaller play\n";
          play(); //throws
