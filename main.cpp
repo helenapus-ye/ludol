@@ -7,13 +7,14 @@
 #include "std_lib_facilities.h"
 #include "LudolWindow.h"
 
+
 //------------------------------------------------------------------------------'
 
 // C++ programs start by executing the function main
 int main() {
     // Show a nice message in the Terminal window
     cout << "Hello, World!" << endl;
-    LudolWindow game(100, 50, 640, 660, "Ludøl");
+    LudolWindow game(100, 100, 660, 800, "Ludol");
 
     //lager alle spillerne
     

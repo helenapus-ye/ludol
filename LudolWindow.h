@@ -37,6 +37,15 @@ private:
 
     void draw_infoText(std::string info); //tegner tekst over spillbrett med instruksjoner 
 
+    //håndterer drag n drop av brikker
+    void check_drag_n_drop();
+    void draw_dragged_piece();
+    int find_piece_at(const int x, const int y);
+    void handle_drop(const int x, const int y);
+
+    //Tegner brikke i skjermkoordinater
+    void draw_piece(const int x, const int y, const TDT4102::Color color, const bool isDraggedOriginal);
+
 
     //tegner antall spy og drikke osv
     void draw_poeng();
@@ -81,4 +90,7 @@ private:
     Button reset_button;  
     Button quit_button;
     Button dice_button;
+
+    int dragging_piece_index = -1;  //0-15 hvilken brikke som dras (player_id * brikk_id), -1 = ingen
+    int drag_x = 0, drag_y = 0;    // museposisjon under drag
 };

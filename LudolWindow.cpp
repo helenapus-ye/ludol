@@ -5,7 +5,7 @@
 /// kordinater for brettet, ligger visualisert i brett kordinater.png
 // I toppen av LudolWindow.cpp
 constexpr int BOARD_X = 20;
-constexpr int BOARD_Y = 60;
+constexpr int BOARD_Y = 120;
 constexpr int BOARD_SIZE = 600;
 constexpr int CELL = BOARD_SIZE / 15;
 
@@ -92,13 +92,60 @@ void LudolWindow::play()
 
     while (!should_close())
     {
+
+        check_drag_n_drop();
+
         draw_board();
         draw_infoText(info);
         draw_players(players);
         
+        draw_dragged_piece();
 
         // tilslutt
         next_frame();
+    }
+}
+
+void LudolWindow::draw_dragged_piece() {
+
+    if (dragging_piece_index != -1) {
+
+        const int dragging_piece_player_index = dragging_piece_index / players.size();
+
+        draw_piece(drag_x, drag_y, players.at(dragging_piece_player_index).color, true);
+    }
+}
+
+int LudolWindow::find_piece_at(const int x, const int y) {
+    return 5;
+}
+
+void LudolWindow::handle_drop(const int x, const int y) {
+    dragging_piece_index = -1;
+    //return 5;
+}
+
+void LudolWindow::check_drag_n_drop() {
+    Point mouse = get_mouse_coordinates();
+
+    if (is_left_mouse_button_down()) {
+        if (dragging_piece_index == -1) {
+            // Sjekk om musen traff en brikke — start drag
+            dragging_piece_index = find_piece_at(mouse.x, mouse.y);
+        }
+        if (dragging_piece_index != -1) {
+            drag_x = mouse.x;
+            drag_y = mouse.y;
+        }
+    } else {
+        if (dragging_piece_index != -1) {
+            // Sluppet — sjekk om det er en gyldig celle
+            handle_drop(drag_x, drag_y);
+
+            info = "Du droppet: " + std::to_string(dragging_piece_index) + " letsgooo!!";
+
+            dragging_piece_index = -1;
+        }
     }
 }
 
@@ -166,31 +213,35 @@ void LudolWindow::draw_board()
     draw_triangle({BOARD_X + CELL * 6, BOARD_Y + CELL * 9}, {BOARD_X + CELL * 9, BOARD_Y + CELL * 9}, center, COLORS.at(3));  // bunn = grønn
 }
 
+void LudolWindow::draw_piece(const int x, const int y, const TDT4102::Color color, const bool isDraggedOriginal){
+    draw_circle({x, y}, CELL*(isDraggedOriginal ? 1.1 : 0.95) / 2, TDT4102::Color::black);
+    draw_circle({x, y}, CELL*0.85 / 2, color);
+}
+
 void LudolWindow::draw_piece(Piece piece, Player player)
 {   
+    //check if it is being dragged!
+    const bool isDragged = ((player.playernumber * 4 + piece.piece_number) == dragging_piece_index);
+
     if (piece.home_start) {
         const std::pair<float, float> piecePos = HOME_START.at(player.playernumber).at(piece.piece_number);
    
         const float x = piecePos.first;
         const float y = piecePos.second;
-        draw_circle({BOARD_X + static_cast<int>(std::round((x * CELL)+CELL/2.0)), BOARD_Y+ static_cast<int>(std::round((y * CELL)+CELL/2.0))}, CELL*0.95 / 2.0, TDT4102::Color::black);
-        draw_circle({BOARD_X + static_cast<int>(std::round((x * CELL)+CELL/2.0)), BOARD_Y+ static_cast<int>(std::round((y * CELL)+CELL/2.0))}, CELL*0.85 / 2.0, player.color);
+
+        draw_piece(BOARD_X + static_cast<int>(std::round((x * CELL)+CELL/2.0)), BOARD_Y+ static_cast<int>(std::round((y * CELL)+CELL/2.0)), player.color, isDragged);
     }
     else if(piece.home_end){
         const int home_end_path_index = std::min(piece.steps_made - BOARD_PATH.size(), HOME_END.at(player.playernumber).size() - 1);
 
         const std::pair<int, int> piecePos = HOME_END.at(player.playernumber).at(home_end_path_index);
 
-        draw_circle({(BOARD_X + piecePos.first * CELL)+CELL/2, (BOARD_Y + piecePos.second * CELL)+CELL/2}, CELL*0.95 / 2, TDT4102::Color::black);
-        draw_circle({(BOARD_X + piecePos.first * CELL)+CELL/2, (BOARD_Y + piecePos.second * CELL)+CELL/2}, CELL*0.85 / 2, player.color);
-
-
+        draw_piece((BOARD_X + piecePos.first * CELL)+CELL/2, (BOARD_Y + piecePos.second * CELL)+CELL/2, player.color, isDragged);
 
     } else {
         const std::pair<int, int> piecePos = BOARD_PATH.at(piece.path_index);
 
-        draw_circle({(BOARD_X + piecePos.first * CELL)+CELL/2, (BOARD_Y + piecePos.second * CELL)+CELL/2}, CELL*0.95 / 2, TDT4102::Color::black);
-        draw_circle({(BOARD_X + piecePos.first * CELL)+CELL/2, (BOARD_Y + piecePos.second * CELL)+CELL/2}, CELL*0.85 / 2, player.color);
+        draw_piece((BOARD_X + piecePos.first * CELL)+CELL/2, (BOARD_Y + piecePos.second * CELL)+CELL/2, player.color, isDragged);
     }
 }
 
@@ -206,9 +257,7 @@ void LudolWindow::draw_players(std::vector<Player> players)
 }
 
 void LudolWindow::draw_infoText(std::string info) {
-    
-    draw_text({BOARD_X, BOARD_Y - 25}, info, TDT4102::Color::black, 18);
-    
+    draw_text({BOARD_X, BOARD_Y - 35}, info, TDT4102::Color::black, 26);
 }
 
 
@@ -226,9 +275,6 @@ void LudolWindow::roll_dice() {
     flytt_brike(0, dice_result);
 
     current_player_index = (current_player_index + 1) % 4;
-
-  
-    
 }
 
 /// @brief flytter antall steps og oppdaterer home_start og home_end
