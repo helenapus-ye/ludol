@@ -35,13 +35,20 @@ private:
 
     void draw_piece(Piece piece, Player player);
 
-    void draw_infoText(std::string info); //tegner tekst over spillbrett med instruksjoner 
+    void draw_infoText(); //tegner tekst over spillbrett med instruksjoner 
 
     //håndterer drag n drop av brikker
     void check_drag_n_drop();
     void draw_dragged_piece();
     int find_piece_at(const int x, const int y);
     void handle_drop(const int x, const int y);
+
+    //regner ut skjermpositionen til en brikke basert på om den er i start, på brettet eller i mål
+    std::pair<int, int> calculate_screen_position(const int player_index, const Piece piece);
+    std::pair<int, int> calculate_piece_board_position(const int player_index, const Piece piece);
+    std::pair<int, int> calculate_new_board_position(const int player_index, const Piece piece, const int steps);
+
+    
 
     //Tegner brikke i skjermkoordinater
     void draw_piece(const int x, const int y, const TDT4102::Color color, const bool isDraggedOriginal);
@@ -79,12 +86,23 @@ private:
     void roll_dice();
 
     void flytt_brike(int valgtBrikkeIndex, int steps_made);
+    Piece flytt_brike_struct(Piece piece, const int steps_to_make);
+
+
+    enum class GameWaitState {
+        WaitingForRoll,
+        WaiutingForMove,
+    };
+
+    GameWaitState state = GameWaitState::WaitingForRoll;
+
 
     std::vector<Player> players;
 
     int current_player_index = 0; // Index til hvilken spiller som har tur (0-3)
     int dice_result = 0;
     std::string info;//tekst som skal vises over brettet
+    std::string feil;//tekst som skal vises over brettet
 
     //knapper
     Button reset_button;  
