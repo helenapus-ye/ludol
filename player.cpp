@@ -7,7 +7,17 @@ const int START_OFFSETS[4] = {0, 13, 26, 39};
 //forteller hvordan er brikke blir lagd
 Piece::Piece(int piece_number, int start_index)
     //path_index starter på start_index - 1 fordi når brikken kommer inn på brettet skal den være på index 0 i BOARD_PATH
-    : piece_number(piece_number), path_index(start_index - 1), home_start(true),home_end(false), oneround(false), steps_made(-1) {
+    : piece_number(piece_number), path_index(start_index - 1), home_start(true),home_end(false), 
+    oneround(false), steps_made(-1), rokade(false), start_index(start_index){
+}
+
+void Piece::reset() {
+    path_index = start_index - 1;
+    home_start = true;
+    home_end = false;
+    oneround = false;
+    steps_made = -1;
+    rokade = false;
 }
 
 

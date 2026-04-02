@@ -85,6 +85,10 @@ private:
 
     void roll_dice();
 
+    void updateAfterMove();
+
+    void invalidMove(Player& personWhoFailed, Piece& deadPiece);
+
     void flytt_brike(int valgtBrikkeIndex, int steps_made);
     Piece flytt_brike_struct(Piece piece, const int steps_to_make);
 

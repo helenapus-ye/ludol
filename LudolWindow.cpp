@@ -291,6 +291,11 @@ void LudolWindow::handle_drop(const int x, const int y) {
     const auto draggedPieceOriginal = players.at(dragging_piece_player_index).pieces.at(dragging_piece_index % 4);
 
     const auto droppedPieceBoardPos = screen_to_board(x, y);
+    
+    //Sjekke om det er rokade på dette felte
+    bool blocked = false;
+    //setter en rar verdi så program ikke kræsjer
+    int stepWhereBlooked = 999;
 
     //Vi tester om et, to .. seks mulige felt er gyldige, eller så thrower vi!
     for (int steps = 1; steps <= 6; steps++) { 
@@ -298,24 +303,69 @@ void LudolWindow::handle_drop(const int x, const int y) {
         //if we move draggedPieceOriginal and drop it after X steps, will it have the  
         const auto draggedPieceOriginalNextPos = calculate_new_board_position(dragging_piece_player_index, draggedPieceOriginal, steps);
 
-
-        //Sjekke om det er kræsj/rokade her? Vi går 1 steg av gangen.
-
-
+        //Endrer blocked og stepWhereBlooked
+        for (const auto &player : players) {
+            for (const auto &piece : player.pieces) {
+                if (piece.rokade) {
+                    auto piecePos = calculate_new_board_position(player.playernumber, piece, 0); // 0 steg = nåværende posisjon
+                    if (piecePos.first == draggedPieceOriginalNextPos.first && piecePos.second == draggedPieceOriginalNextPos.second) {
+                        blocked = true;
+                        stepWhereBlooked = steps;
+                    }
+                }
+            }
+        }
+        
+        
 
         if (draggedPieceOriginalNextPos.first == droppedPieceBoardPos.first && draggedPieceOriginalNextPos.second == droppedPieceBoardPos.second) {
    
             //Inni her: Det GÅR ANN å komme hit med 1-6 flytt.
 
             //    sjekkLLudolRegler(dragging_piece_player_index, draggingPieceOriginal, steps);
-            
             if (steps != dice_result) {
+                //invalid move av curent player og dragging piece skal resettes
+                invalidMove(players.at(current_player_index), players.at(current_player_index).pieces.at(dragging_piece_index));
                 throw std::runtime_error("Du må flytte det antallet steg du kastet på terningen!");
             }
+
+
+            //sjekker om det er en rokade og om spilleren prøver og gå over rokaden
+            if (blocked && steps >= stepWhereBlooked) {
+                //invalid move av curent player og dragging piece skal resettes
+                invalidMove(players.at(current_player_index), players.at(current_player_index).pieces.at(dragging_piece_index));
+                throw std::runtime_error("Du kan ikke hoppe over en rokade!");
+            }
+
+            // Posisjonen vår brikke lander på
+            auto landingPos = draggedPieceOriginalNextPos;
+
+            // Sjekk om vi tok noen brikker
+            for (auto &player : players) {
+                if (player.playernumber == current_player_index) continue;
+
+                for (auto &piece : player.pieces) {
+                    if (piece.home_start || piece.home_end) continue;
+
+                    // Finn denne motspiller-brikkens posisjon
+                    auto enemyPos = calculate_new_board_position(player.playernumber, piece, 0);
+
+                    if (enemyPos.first == landingPos.first && enemyPos.second == landingPos.second) {
+                       
+                        //spiller som ble tatt, må drikke, og brikken tilbakkestilles
+                        invalidMove(player, piece);
+                        
+
+                    }
+                }
+            }
+
+                        
             
-        
             //Gyldig drop! Flytt brikken og return
             flytt_brike(dragging_piece_index % 4, steps);
+
+            updateAfterMove();
             return;
         }
     }
@@ -346,6 +396,37 @@ void LudolWindow::check_drag_n_drop() {
            // info = "Du droppet: " + std::to_string(dragging_piece_index) + " letsgooo!!";
 
             dragging_piece_index = -1;
+        }
+    }
+}
+
+void LudolWindow::updateAfterMove() {
+    
+
+    // Oppdater rokade-status
+    //setter først alle til false
+    for (auto &player : players) {
+        for (auto &piece : player.pieces) {
+            piece.rokade = false;
+        }
+    }
+
+    //går igjennom alle brikker og leter etter rokade
+    for (auto &player : players) {
+        for (auto &piece : player.pieces) {
+            auto pos = calculate_screen_position(player.playernumber, piece);
+
+            for (auto &other_player : players) {
+                for (auto &other_piece : other_player.pieces) {
+                    if (&piece == &other_piece) continue;
+
+                    auto other_pos = calculate_screen_position(other_player.playernumber, other_piece);
+                    if (pos == other_pos) {
+                        piece.rokade = true;
+                        other_piece.rokade = true;
+                    }
+                }
+            }
         }
     }
 }
@@ -428,6 +509,8 @@ void LudolWindow::draw_piece(Piece piece, Player player)
 
     draw_piece(piecePos.first, piecePos.second, player.color, isDragged);
 
+
+
     /*
 
     if (piece.home_start) {
@@ -454,11 +537,22 @@ void LudolWindow::draw_piece(Piece piece, Player player)
 
 void LudolWindow::draw_players(std::vector<Player> players)
 {
-    for (const auto &player : players)
-    {
-        for (const auto &piece : player.pieces)
-        {
+
+    //går igjenom alle spillere og brikkene deres og tegner de
+    for (const auto &player : players) {
+        for (const auto &piece : player.pieces) {
             draw_piece(piece, player);
+
+            //om det er rokade tegner de et to tall på brikken
+            if (piece.rokade) {
+                auto pos = calculate_screen_position(player.playernumber, piece);
+                draw_text(
+                    {pos.first - CELL / 4, pos.second - CELL / 4},
+                    "2",
+                    TDT4102::Color::white,
+                    static_cast<unsigned int>(CELL / 2)
+                );
+            }
         }
     }
 }
@@ -552,12 +646,7 @@ void LudolWindow::flytt_brike(const int valgtBrikkeIndex, const int steps_to_mak
     current_player_index = (current_player_index + 1) % 4; // bytt spiller ved gyldig flytt
 }
 
-void LudolWindow::draw_poeng() {}
-void LudolWindow::handle_click(int x, int y) {}
-bool LudolWindow::check_winner() { return false; }
-
 void LudolWindow::reset_game()
-
 {
     Player gul("Gul", COLORS.at(0), 0);
     Player blaa("Blå", COLORS.at(1), 1);
@@ -569,4 +658,28 @@ void LudolWindow::reset_game()
     current_player_index = 0; // Index til hvilken spiller som har tur (0-3)
     dice_result = 0;
 }
+
+void LudolWindow::invalidMove(Player& personWhoFailed, Piece& deadPiece){
+    personWhoFailed.antallDrukket ++;
+    std::cout << "spiller faild og antaldrukket" << personWhoFailed.name << personWhoFailed.antallDrukket << std::endl;
+    
+
+    deadPiece.reset();
+
+
+    std::string msg = personWhoFailed.name + " må drikke!";
+    draw_text(
+        {BOARD_X + CELL * 3, BOARD_Y - CELL},
+        msg,
+        TDT4102::Color::red,
+        static_cast<unsigned int>(CELL / 2)
+    );
+
+}
+
+
+//tomme funskjoner
+void LudolWindow::draw_poeng() {}
+void LudolWindow::handle_click(int x, int y) {}
+bool LudolWindow::check_winner() { return false; }
 void LudolWindow::write_result_to_file(const std::string &result) {}

@@ -6,12 +6,17 @@
 /// informasjonen om en spillbrikke
 struct Piece {
     int piece_number;
+    int start_index; //indexen som path index alltid starter på, skal aldri endres
     int path_index; // index i BOARD_PATH for å finne brikkens posisjon
     int steps_made; // antall flytt fra sitt startpunkt i BOARD_PATH
     bool home_start;      // er brikken på startfeltet?
     bool home_end;        // er brikken på den pilen banen inn til mål?
     bool oneround;  // har brikken fullført en runde rundt brettet?
-    
+    bool rokade; //står brikken i en rokade
+
+    //setter tilbakke alle orginal verdien, som når brikke blir tatt
+    void reset(); //eks: players.at(player_index).pieces.at(piece_index).reset();
+
     Piece(int piece_number, int start_index);
 };
 
