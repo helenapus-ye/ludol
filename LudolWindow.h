@@ -89,9 +89,12 @@ private:
 
     void invalidMove(Player& personWhoFailed, Piece& deadPiece);
 
+    bool has_pieces_on_board(int player_index); //returner true om spiller har noen brikker på brette
+
     void flytt_brike(int valgtBrikkeIndex, int steps_made);
     Piece flytt_brike_struct(Piece piece, const int steps_to_make);
 
+    void player_spydde(int player_index);
 
     enum class GameWaitState {
         WaitingForRoll,
@@ -100,18 +103,28 @@ private:
 
     GameWaitState state = GameWaitState::WaitingForRoll;
 
+    bool skip_info_update = false; //Betstemmer om info teksten i play() skal endres eller ikke
 
     std::vector<Player> players;
 
     int current_player_index = 0; // Index til hvilken spiller som har tur (0-3)
     int dice_result = 0;
+    int tryNr = 0; //antall ganger spilleren har kastet terningen på sin tur
     std::string info;//tekst som skal vises over brettet
     std::string feil;//tekst som skal vises over brettet
+    std::string move_error; //for teksten fra runtime_error throws (f.eks. "Du må flytte det antallet steg du kastet på terningen!")
+    std::string drink_message; //for teksten fra invalidMove
 
     //knapper
     Button reset_button;  
     Button quit_button;
     Button dice_button;
+
+    //spydd knapper
+    Button spydd_button_0;
+    Button spydd_button_1;
+    Button spydd_button_2;
+    Button spydd_button_3;
 
     int dragging_piece_index = -1;  //0-15 hvilken brikke som dras (player_id * brikk_id), -1 = ingen
     int drag_x = 0, drag_y = 0;    // museposisjon under drag

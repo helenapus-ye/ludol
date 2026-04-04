@@ -14,7 +14,7 @@
 int main() {
     // Show a nice message in the Terminal window
     cout << "Hello, World!" << endl;
-    LudolWindow game(100, 100, 660, 800, "Ludol");
+    LudolWindow game(100, 100,  1320, 800, "Ludol");
 
     //lager alle spillerne
     

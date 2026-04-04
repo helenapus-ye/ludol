@@ -6,10 +6,15 @@ constexpr int BOARD_ROWS_N_COLUMNS = 15;
 
 /// kordinater for brettet, ligger visualisert i brett kordinater.png
 // I toppen av LudolWindow.cpp
-constexpr int BOARD_X = 20;
-constexpr int BOARD_Y = 120;
+constexpr int BOARD_X = 30;
+constexpr int BOARD_Y = 60;
 constexpr int BOARD_SIZE = 600;
 constexpr int CELL = BOARD_SIZE / BOARD_ROWS_N_COLUMNS;
+
+// Høyre panel (til høyre for brettet)
+constexpr int PANEL_X = BOARD_X + BOARD_SIZE + 40;  // start av høyre panel
+constexpr int PANEL_Y = 60;                          // topp av høyre panel
+constexpr int PANEL_W = 600;                          // bredde på høyre panel
 
 
 // Alle 52 baneceller i spillrekkefølge {rad, kol}
@@ -53,16 +58,29 @@ const std::vector<std::vector<std::pair<int, int>>> HOME_END {
 LudolWindow::LudolWindow(int x, int y, int width, int height, const std::string &title)
     : AnimationWindow(x, y, width, height, title),
       reset_button({10, 10}, 100, 30, "Reset"),
-      quit_button({120, 10}, 100, 30, "Quit"),
-      dice_button({230, 10}, 100, 30, "Kast terning")
+      quit_button({width - 110, 10}, 100, 30, "Quit"),
+      dice_button({PANEL_X, PANEL_Y + 100}, 200, 50, "Kast terning"),
+      spydd_button_0({PANEL_X + 400, PANEL_Y + 300}, 120, 30, "Spiller spydde"),
+      spydd_button_1({PANEL_X + 400, PANEL_Y + 340}, 120, 30, "Spiller spydde"),
+      spydd_button_2({PANEL_X + 400, PANEL_Y + 380}, 120, 30, "Spiller spydde"),
+      spydd_button_3({PANEL_X + 400, PANEL_Y + 420}, 120, 30, "Spiller spydde")
 {
     add(reset_button);
     add(quit_button);
     add(dice_button);
+    add(spydd_button_0);
+    add(spydd_button_1);
+    add(spydd_button_2);
+    add(spydd_button_3);
 
     reset_button.setCallback(std::bind(&LudolWindow::reset_game, this));
     quit_button.setCallback(std::bind(&LudolWindow::close, this));
-    dice_button.setCallback(std::bind(&LudolWindow::roll_dice, this));  
+    dice_button.setCallback(std::bind(&LudolWindow::roll_dice, this));
+
+    spydd_button_0.setCallback([this]() { player_spydde(0); });
+    spydd_button_1.setCallback([this]() { player_spydde(1); });
+    spydd_button_2.setCallback([this]() { player_spydde(2); });
+    spydd_button_3.setCallback([this]() { player_spydde(3); });
 }
 
 void LudolWindow::play()
@@ -90,14 +108,17 @@ void LudolWindow::play()
 
     while (!should_close())
     {
+        //om vi venter på kast
         if (state == GameWaitState::WaitingForRoll) {
-            // Venter på at spilleren skal kaste terningen
-            // Dette håndteres av roll_dice callbacken
-            info = "Det er nå " + players.at(current_player_index).name +  " sin tur. Trykk for å kaste terningen" ;
+            //og det ikke er slik at infoen skal skippe
+            if (!skip_info_update) {
+                //endre info til
+                info = "Det er nå " + players.at(current_player_index).name + " sin tur. Trykk for å kaste terningen";
+            }
+        //om det er kastet og vi venter på move
         } else if (state == GameWaitState::WaiutingForMove) {
-            // Venter på at spilleren skal flytte en brikke
-            // Dette håndteres av check_drag_n_drop i hovedloopen
-            info = players.at(current_player_index).name +  " kastet " + std::to_string(dice_result) + ". Dra en brikke til et felt å flytte til!";
+            //endre info til dette
+            info = players.at(current_player_index).name + " kastet " + std::to_string(dice_result) + ". Dra en brikke til et felt å flytte til!";
         }
 
         try
@@ -106,12 +127,13 @@ void LudolWindow::play()
             draw_board();
             draw_infoText();
             draw_players(players);
-            
+            draw_poeng();
             draw_dragged_piece();
         }
         catch(const std::exception& e)
         {
-           feil = e.what();
+            //Cath blokken
+           move_error = e.what();
            dragging_piece_index = -1;
 
            if (state == GameWaitState::WaiutingForMove) {
@@ -186,7 +208,7 @@ std::pair<int, int> screen_to_board(const int x, const int y) {
             }
         }
     }
-
+    //spiller flytter til sted utenfor
     throw std::runtime_error("DRIKK! Brikkene må være på brettet!");
 }
 
@@ -290,7 +312,15 @@ void LudolWindow::handle_drop(const int x, const int y) {
 
     const auto draggedPieceOriginal = players.at(dragging_piece_player_index).pieces.at(dragging_piece_index % 4);
 
-    const auto droppedPieceBoardPos = screen_to_board(x, y);
+    //ser om vi får gjort om screen kordinatene til en celle på brette.
+    //om det ikke er mulig betyr det at spiller har dratt brikken utenfor brette og må drikke
+    std::pair<int, int> droppedPieceBoardPos;
+    try {
+        droppedPieceBoardPos = screen_to_board(x, y);
+    } catch (...) {
+        invalidMove(players.at(current_player_index), players.at(current_player_index).pieces.at(dragging_piece_index % 4));
+        throw;
+    }
     
     //Sjekke om det er rokade på dette felte
     bool blocked = false;
@@ -303,11 +333,14 @@ void LudolWindow::handle_drop(const int x, const int y) {
         //if we move draggedPieceOriginal and drop it after X steps, will it have the  
         const auto draggedPieceOriginalNextPos = calculate_new_board_position(dragging_piece_player_index, draggedPieceOriginal, steps);
 
-        //Endrer blocked og stepWhereBlooked
+        
+        //Endrer blocked og stepWhereBlooked — bare fiendtlige rokader blokkerer
+        //finner ut om det er rokade i løpet av de 6 neste stegene
         for (const auto &player : players) {
+            if (player.playernumber == current_player_index) continue; // hopp over egne brikker
             for (const auto &piece : player.pieces) {
                 if (piece.rokade) {
-                    auto piecePos = calculate_new_board_position(player.playernumber, piece, 0); // 0 steg = nåværende posisjon
+                    auto piecePos = calculate_new_board_position(player.playernumber, piece, 0);
                     if (piecePos.first == draggedPieceOriginalNextPos.first && piecePos.second == draggedPieceOriginalNextPos.second) {
                         blocked = true;
                         stepWhereBlooked = steps;
@@ -322,21 +355,36 @@ void LudolWindow::handle_drop(const int x, const int y) {
    
             //Inni her: Det GÅR ANN å komme hit med 1-6 flytt.
 
-            //    sjekkLLudolRegler(dragging_piece_player_index, draggingPieceOriginal, steps);
-            if (steps != dice_result) {
-                //invalid move av curent player og dragging piece skal resettes
-                invalidMove(players.at(current_player_index), players.at(current_player_index).pieces.at(dragging_piece_index));
-                throw std::runtime_error("Du må flytte det antallet steg du kastet på terningen!");
+            // Brikker fra home_start — spesialregel: må ha 1/6 og plasseres på felt 1
+            if (draggedPieceOriginal.home_start) {
+                if (dice_result != 1 && dice_result != 6) {
+                    invalidMove(players.at(current_player_index), players.at(current_player_index).pieces.at(dragging_piece_index % 4));
+                    throw std::runtime_error("Du må kaste 1 eller 6 for å ta ut en brikke!");
+                }
+                if (steps != 1) {
+                    //om brikken var på home start, kan den bare ta et steg
+                    invalidMove(players.at(current_player_index), players.at(current_player_index).pieces.at(dragging_piece_index % 4));
+                    throw std::runtime_error("Brikker fra start må plasseres på første felt!");
+                }
+
+                // Hopp over vanlig terning-sjekk, gå rett til landing-sjekk og flytt
+            } else {
+                // steps != (7-dice_result) er røros konversjonen (1=7-6, 2=7-5, 3=7-4, osv)
+                //kast er gyldig om antall spes enten er dice_results eller 7-dice_result
+                if (steps != dice_result && steps != (7 - dice_result)) {
+                    invalidMove(players.at(current_player_index), players.at(current_player_index).pieces.at(dragging_piece_index % 4));
+                    throw std::runtime_error("Du må flytte det antallet steg du kastet på terningen!");
+                }
+                
+                //sjekker om det er en rokade og om spilleren prøver og gå over rokaden
+                if (blocked && steps >= stepWhereBlooked) {
+                    invalidMove(players.at(current_player_index), players.at(current_player_index).pieces.at(dragging_piece_index % 4));
+                    throw std::runtime_error("Du kan ikke hoppe over en rokade!");
+                }
             }
+           
 
-
-            //sjekker om det er en rokade og om spilleren prøver og gå over rokaden
-            if (blocked && steps >= stepWhereBlooked) {
-                //invalid move av curent player og dragging piece skal resettes
-                invalidMove(players.at(current_player_index), players.at(current_player_index).pieces.at(dragging_piece_index));
-                throw std::runtime_error("Du kan ikke hoppe over en rokade!");
-            }
-
+          
             // Posisjonen vår brikke lander på
             auto landingPos = draggedPieceOriginalNextPos;
 
@@ -350,11 +398,29 @@ void LudolWindow::handle_drop(const int x, const int y) {
                     // Finn denne motspiller-brikkens posisjon
                     auto enemyPos = calculate_new_board_position(player.playernumber, piece, 0);
 
+                    //om vi har landet på et sted der det står en annen brikke
                     if (enemyPos.first == landingPos.first && enemyPos.second == landingPos.second) {
                        
-                        //spiller som ble tatt, må drikke, og brikken tilbakkestilles
-                        invalidMove(player, piece);
-                        
+                        // Er det en fiendtlig brikke?
+                        if (player.playernumber != current_player_index) {
+
+                            // Fiendtlig rokade — kan ikke flytte dit
+                            if (piece.rokade) {
+                                invalidMove(players.at(current_player_index), players.at(current_player_index).pieces.at(dragging_piece_index % 4));
+                                throw std::runtime_error("Du kan ikke lande på en rokade! DRIKK!");
+                            }
+
+                            // Sjekk om fiendtlig brikke står på sitt eget frifelt (startfelt)
+                            const auto& enemyStartPos = BOARD_PATH.at(piece.start_index);
+                            if (enemyPos.first == enemyStartPos.first && enemyPos.second == enemyStartPos.second) { 
+                                // Brikken er beskyttet på sitt frifelt — ugyldig trekk
+                                invalidMove(players.at(current_player_index), players.at(current_player_index).pieces.at(dragging_piece_index % 4));
+                                throw std::runtime_error("Brikken står på sitt frifelt og kan ikke tas! DRIKK!");
+                            }
+
+                            // Vanlig fiendtlig brikke — ta den
+                            invalidMove(player, piece);
+                        }
 
                     }
                 }
@@ -366,11 +432,15 @@ void LudolWindow::handle_drop(const int x, const int y) {
             flytt_brike(dragging_piece_index % 4, steps);
 
             updateAfterMove();
-            return;
+           return;
         }
     }
 
+
+    //spiller flytter til et sted som ikke er i løpet av de neste 6 stepsene. også steder utenfor banen
+    invalidMove(players.at(current_player_index), players.at(current_player_index).pieces.at(dragging_piece_index % 4));
     throw std::runtime_error("Du kan ikke flytte til det feltet!");
+
     
     dragging_piece_index = -1;
 
@@ -558,14 +628,44 @@ void LudolWindow::draw_players(std::vector<Player> players)
 }
 
 void LudolWindow::draw_infoText() {
-    draw_text({BOARD_X, BOARD_Y - 45}, info, TDT4102::Color::black, 26);
-    draw_text({BOARD_X, BOARD_Y - 25}, feil, TDT4102::Color::red, 26);
+    
+    // Rød feilmelding fra throws (f.eks. "Du må flytte det antallet steg...")
+    draw_text({PANEL_X, PANEL_Y}, move_error, TDT4102::Color::red, 18);
+
+    // Rød melding fra invalidMove (f.eks. "Gul må drikke!")
+    draw_text({PANEL_X, PANEL_Y + 25}, drink_message, TDT4102::Color::red, 18);
+
+    // Sort skillelinje
+    draw_line({PANEL_X, PANEL_Y + 50}, {PANEL_X + 500, PANEL_Y + 50}, TDT4102::Color::black);
+
+    // Info-tekst (hvem sin tur / hva de kastet)
+    draw_text({PANEL_X, PANEL_Y + 65}, info, TDT4102::Color::black, 20);
 }
 
+void LudolWindow::draw_poeng() {
+
+    //y verdi vi starter å tegne
+    int startY = PANEL_Y + 300;
+
+    //går igjenom alle spillere og skriver statusen på de
+    for (int i = 0; i < static_cast<int>(players.size()); ++i) {
+        const auto& player = players[i];
+        int rowY = startY + i * 40;
+
+        // Spillernavn i spillerens farge
+        draw_text({PANEL_X, rowY}, player.name, player.color, 20);
+
+        // Stats i svart
+        std::string stats = ": Antall drukket: " + std::to_string(player.antallDrukket)
+                          + "  Antall spydd: " + std::to_string(player.antallSpydd);
+        draw_text({PANEL_X + 80, rowY}, stats, TDT4102::Color::black, 20);
+    }
+}
 
 void LudolWindow::roll_dice() {      
 
-
+    
+    //sjekker at det er gyldig tidspunkt for terning å bli trillet, om det er feil går vi til neste spiller
     if (state != GameWaitState::WaitingForRoll) {
         //Her kan vi ikke throwe, siden vi er i button callback!
 
@@ -581,10 +681,37 @@ void LudolWindow::roll_dice() {
     dice_result = rand() % 6 + 1;
     std::cout << "Du kastet en " << dice_result << "!" << std::endl;
 
-    ///bytter tekst
+   // Hvis spilleren ikke har brikker ute og ikke kastet 1 eller 6, hopp over spiller
+    if (!has_pieces_on_board(current_player_index) && dice_result != 1 && dice_result != 6) {
+        tryNr++;
+
+        //har personen noen forsøk igjen?
+        if (tryNr < 3) {
+            info = players.at(current_player_index).name + " kastet " + std::to_string(dice_result) + " og har ingen brikker på brettet. Kast igjen, du har " + std::to_string(3 - tryNr) + " forsøk igjen";
+            skip_info_update = true;
+            
+            // State forblir WaitingForRoll — spilleren kan kaste igjen
+            return;
+        //spiller er tom for forsøk og vi går videre
+        } else {
+            info = players.at(current_player_index).name + " kastet " + std::to_string(dice_result) + " og har ingen forsøk igjen. Det er nå " + players.at((current_player_index + 1) % 4).name + " sin tur";
+            tryNr = 0;
+            current_player_index = (current_player_index + 1) % 4;
+            state = GameWaitState::WaitingForRoll;
+            skip_info_update = true;
+            return;
+        }
+    }
+
+    // Spilleren kan flytte — enten har brikker ute, eller kastet 1/6
     state = GameWaitState::WaiutingForMove;
     feil = "";
     dragging_piece_index = -1;
+    move_error = "";
+    drink_message = "";
+    tryNr = 0; //antall ganger spilleren har kastet terningen på sin tur, nullstilles når noen får flytte
+    skip_info_update = false; //når neste person kastes kan ifoen endre seg
+    
 
     //Midlertidig:
 
@@ -620,22 +747,7 @@ Piece LudolWindow::flytt_brike_struct(Piece piece, const int steps_to_make){
 /// @param steps_to_make 
 void LudolWindow::flytt_brike(const int valgtBrikkeIndex, const int steps_to_make){
 
-   // for (int current_player_index = 0; current_player_index <= 3; ++current_player_index)
-   // {
-   /* const int playerpos_before = players.at(current_player_index).pieces.at(valgtBrikkeIndex).path_index;
-
-    //pathindex etter flytt. % (mod operator) fjerner alle hele runder rundt brette. 
-    //om brikken har kommet til startposisjonen blir posisjonen satt til null igjne
-    const int playerpos_after = (playerpos_before + steps_to_make) % BOARD_PATH.size();
-
-    players.at(current_player_index).pieces.at(valgtBrikkeIndex).home_start = false;
-    players.at(current_player_index).pieces.at(valgtBrikkeIndex).path_index = playerpos_after;
-    players.at(current_player_index).pieces.at(valgtBrikkeIndex).steps_made += steps_to_make;
-
-    //Har vi gått rundt hele brettet?
-    if (players.at(current_player_index).pieces.at(valgtBrikkeIndex).steps_made >= BOARD_PATH.size()) {
-        players.at(current_player_index).pieces.at(valgtBrikkeIndex).home_end = true;
-    }*/
+   
 
     Piece brikke = players.at(current_player_index).pieces.at(valgtBrikkeIndex);
     players.at(current_player_index).pieces.at(valgtBrikkeIndex) = flytt_brike_struct(brikke, steps_to_make);
@@ -643,7 +755,17 @@ void LudolWindow::flytt_brike(const int valgtBrikkeIndex, const int steps_to_mak
     state = GameWaitState::WaitingForRoll;
     feil = "";
     dragging_piece_index = -1;
-    current_player_index = (current_player_index + 1) % 4; // bytt spiller ved gyldig flytt
+    
+
+    // Kastet 6 (eller brukte 1 som en 6er) -> kast igjen
+    if (steps_to_make == 6) {
+        info = players.at(current_player_index).name + " kastet 6 og får kaste igjen!";
+        skip_info_update = true;
+        // Ikke bytt spiller
+    } else {
+
+        current_player_index = (current_player_index + 1) % 4;
+    }
 }
 
 void LudolWindow::reset_game()
@@ -668,18 +790,45 @@ void LudolWindow::invalidMove(Player& personWhoFailed, Piece& deadPiece){
 
 
     std::string msg = personWhoFailed.name + " må drikke!";
-    draw_text(
-        {BOARD_X + CELL * 3, BOARD_Y - CELL},
-        msg,
-        TDT4102::Color::red,
-        static_cast<unsigned int>(CELL / 2)
-    );
+    drink_message = msg;
 
 }
 
+//returnerer true om spilleren har noen brikker på brettet (ikke i hjemstart eller hjemmeend)
+bool LudolWindow::has_pieces_on_board(int player_index) {
+    for (const auto& piece : players.at(player_index).pieces) {
+        if (!piece.home_start) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+void LudolWindow::player_spydde(int player_index) {
+    if (player_index >= static_cast<int>(players.size())) return;
+
+    players.at(player_index).antallSpydd++;
+
+    /* if (players.at(player_index).antallSpydd >= 3) {
+        std::string name = players.at(player_index).name;
+        players.erase(players.begin() + player_index);
+        
+        info = name + " har spydd 3 ganger og er ute av spillet!";
+        skip_info_update = true;
+
+        // Juster current_player_index om nødvendig
+        if (current_player_index >= static_cast<int>(players.size())) {
+            current_player_index = 0;
+        }
+    } */
+}
 
 //tomme funskjoner
-void LudolWindow::draw_poeng() {}
+
 void LudolWindow::handle_click(int x, int y) {}
-bool LudolWindow::check_winner() { return false; }
+bool LudolWindow::check_winner() { 
+
+
+    return false; }
 void LudolWindow::write_result_to_file(const std::string &result) {}
