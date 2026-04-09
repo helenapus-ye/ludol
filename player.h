@@ -41,6 +41,9 @@ struct Player {
     //antall spyd
     int antallSpydd;
 
+    //har spiller død
+    bool gameOver;
+
 
 
     Player(std::string name, TDT4102::Color color, int playernumber);

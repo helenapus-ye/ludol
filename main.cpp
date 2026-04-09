@@ -15,18 +15,9 @@ int main() {
     // Show a nice message in the Terminal window
     cout << "Hello, World!" << endl;
     LudolWindow game(100, 100,  1320, 800, "Ludol");
-
-    //lager alle spillerne
     
-    
-
-
     game.play();
 
-
-
-    // This lets the operating system (Windows, Mac, Linux, etc.) know that the program
-    // did not encounter any errors
     return 0;
 }
 

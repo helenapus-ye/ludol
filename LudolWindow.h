@@ -51,7 +51,7 @@ private:
     
 
     //Tegner brikke i skjermkoordinater
-    void draw_piece(const int x, const int y, const TDT4102::Color color, const bool isDraggedOriginal);
+    void draw_piece_screen_coord(const int x, const int y, const TDT4102::Color color, const bool isDraggedOriginal);
 
 
     //tegner antall spy og drikke osv
@@ -77,11 +77,8 @@ private:
      */
     void reset_game();
 
-    /**
-     * @brief Writes the game result to a file.
-     * @param result The result string to write.
-     */
-    void write_result_to_file(const std::string& result);
+    
+    
 
     void roll_dice();
 
@@ -95,6 +92,12 @@ private:
     Piece flytt_brike_struct(Piece piece, const int steps_to_make);
 
     void player_spydde(int player_index);
+    void hopp_til_neste_spiller(); //hopper til neste spiller og sjekker om spiller er dø
+
+
+    void write_result_to_file(const std::string& filename); //skriver resultatet av spillet til en fil
+    void read_result_from_file(const std::string& filename); //leser resultatet av spillet fra en fil
+
 
     enum class GameWaitState {
         WaitingForRoll,
@@ -105,8 +108,15 @@ private:
 
     bool skip_info_update = false; //Betstemmer om info teksten i play() skal endres eller ikke
 
-    std::vector<Player> players;
 
+    //dommer funskjoner
+    std::string isMovePassive(int chosenPieceIndex, int chosenSteps);
+    bool canKnockOut(int playerIndex, const Piece& piece, int steps);
+
+    std::vector<Player> players;
+    static const std::vector<std::pair<int,int>> BOARD_PATH;
+    static const std::vector<std::vector<std::pair<int, int>>> HOME_END;
+    
     int current_player_index = 0; // Index til hvilken spiller som har tur (0-3)
     int dice_result = 0;
     int tryNr = 0; //antall ganger spilleren har kastet terningen på sin tur
@@ -118,7 +128,10 @@ private:
     //knapper
     Button reset_button;  
     Button quit_button;
+    Button save_button;
+    Button load_button;
     Button dice_button;
+
 
     //spydd knapper
     Button spydd_button_0;

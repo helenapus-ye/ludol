@@ -26,7 +26,7 @@ void Piece::reset() {
 // det blir også automatisk lagd tre brikker med path_index -1
 Player::Player(std::string name, TDT4102::Color color, int playernumber)
     : name(name), color(color), playernumber(playernumber),
-      antallDrukket(0), antallSpydd(0) {
+      antallDrukket(0), antallSpydd(0), gameOver(false) {
     int start = START_OFFSETS[playernumber];
     for (int i = 0; i < 4; ++i) {
         pieces.push_back(Piece(i, start));
