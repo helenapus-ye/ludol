@@ -2,7 +2,9 @@
 
 ## Hva er Ludøl?
 
-Ludøl er en digital versjon av drikkespillet Ludøl, bygget i C++ med det grafiske biblioteket TDT4102/AnimationWindow. Spillet er basert på Ludo, men med tilleggsregler rundt drikkestraffer. En innebygd dommer overvåker spillernes trekk og deler ut straffeslurker for passivt spill. Spillere som drikker for mye kan spy — og etter tre spyinger er spilleren ute av spillet.
+Jeg har lagd en digital versjon av drikkespillet Ludøl, bygget i C++ med det grafiske biblioteket TDT4102/AnimationWindow. Ludøl har vært en tradisjon på kjellerne på moholt i mange år.
+
+Spillet er basert på Ludo, men med tilleggsregler rundt drikkestraffer. En innebygd dommer overvåker spillernes trekk og deler ut straffeslurker for passivt spill. Spillere går ut etter at de har spydd tre ganger. Dette er løst med at man trykker på en knapp, når en spiller spyr.
 
 Spillet støtter fire spillere (Gul, Blå, Rød, Grønn) som spiller på samme maskin med drag-and-drop av brikker. Spilltilstanden kan lagres til fil og lastes inn igjen senere.
 
@@ -25,9 +27,18 @@ Hver spiller starter med fire brikker på sitt hjemmefelt. Startposisjonene best
 Hovedklassen som arver fra `AnimationWindow` og inneholder all spillogikk og tegning.
 
 **Brettet og koordinater:**
-Spillbrettet er definert som et 15×15 rutenett. `BOARD_PATH` er en vektor med 52 celler som utgjør banen rundt brettet. `HOME_START` definerer startposisjonene inne i hvert hjørne, og `HOME_END` definerer målløypene inn mot midten.
+Spillbrettet er definert som et 15×15 rutenett. Her er en tegning som hviser hvordan kordinatene fungerer.
 
-**Viktige funksjoner:**
+![Tegnet Ludøl brett med kordinater](brettkordinater.png)
+
+
+
+Kordinatene til vikitge ruter lagres i blant annent `BOARD_PATH`, som er en vektor med 52 celler som utgjør banen rundt brettet. `HOME_START` definerer startposisjonene inne i hvert hjørne, og `HOME_END` definerer målløypene inn mot midten
+
+![Hvilke kordinater som er lagret i BOARD_PATH](boardpath.png)
+
+
+**Viktige funksjoner og spill logikk:**
 
 - `play()` — hovedspilløkken. Kjører i en `while`-løkke til vinduet lukkes. Hvert frame tegnes brettet, brikker, info-tekst og poeng. Håndterer også drag-and-drop og fanger exceptions.
 - `roll_dice()` — kaster terningen (tilfeldig 1–6). Hvis spilleren ikke har brikker på brettet og ikke kastet 1 eller 6, får de opptil tre forsøk. Etter tre mislykkede kast går turen videre.
@@ -38,6 +49,10 @@ Spillbrettet er definert som et 15×15 rutenett. `BOARD_PATH` er en vektor med 5
 - `has_pieces_on_board()` — sjekker om en spiller har brikker ute på brettet (ikke på start eller i mål).
 - `hopp_til_neste_spiller()` — bytter til neste spiller som ikke er ute av spillet.
 - `player_spydde()` — registrerer at en spiller har spydd. Etter tre spyinger settes alle brikkene tilbake og spilleren er ute (`gameOver = true`).
+
+Her er en tegning av hvordan funskjonene jobber sammen ov spill logikken funker
+
+![Tegning av spillogikk](logikktegning.png)
 
 **Tegning:**
 
