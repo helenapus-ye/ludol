@@ -50,7 +50,7 @@ Kordinatene til vikitge ruter lagres i blant annent `BOARD_PATH`, som er en vekt
 - `hopp_til_neste_spiller()` — bytter til neste spiller som ikke er ute av spillet.
 - `player_spydde()` — registrerer at en spiller har spydd. Etter tre spyinger settes alle brikkene tilbake og spilleren er ute (`gameOver = true`).
 
-Her er en tegning av hvordan funskjonene jobber sammen ov spill logikken funker
+Her er en tegning av hvordan funskjonene jobber sammen og spill logikken funker
 
 ![Tegning av spillogikk](logikktegning.png)
 
@@ -68,7 +68,7 @@ Her er en tegning av hvordan funskjonene jobber sammen ov spill logikken funker
 - `draw_dragged_piece()` — tegner brikken som dras i museposisjonen.
 
 ### `isMovePassive.cpp` (Dommerfilen)
-En **separat fil** som inneholder dommerfunksjonaliteten. Denne er bevisst skilt ut fra hovedspillogikken slik at dommerreglene enkelt kan byttes ut, justeres eller deaktiveres uten å endre resten av koden.
+En separat fil som inneholder dommerfunksjonaliteten. Denne er bevisst skilt ut fra hovedspillogikken slik at dommerreglene enkelt kan byttes ut, justeres eller deaktiveres uten å endre resten av koden.
 
 **Funksjoner:**
 
@@ -120,4 +120,4 @@ Spillet kan lagres til og lastes fra en tekstfil (`ludol_save.txt`) via knappene
 - **C++ standardbibliotek** — `<vector>`, `<string>`, `<fstream>`, `<stdexcept>`, `<iostream>`, `<functional>`, `<cmath>`.
 
 ### KI-verktøy
-- **Claude (Anthropic)** — brukt til å generere dommerfunksjonaliteten (`isMovePassive.cpp`), inkludert `isMovePassive()` og `canKnockOut()`. Claude ble også brukt som sparringspartner for feilsøking og spørsmål om C++-syntaks (som `static`-medlemmer og `extern`-deklarasjoner). Resten av koden er skrevet manuelt.
+- **Claude (Anthropic)** — Brukt til rådgiving, feilsøking og C++ syntax. Den har speseilt hjulpet meg med drag and drop funskjonaliteten. Resten av koden er skrevet manuelt.
